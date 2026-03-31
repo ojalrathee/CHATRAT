@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>CHATRAT — Chat Near You</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════
+   TOKENS & RESET
+══════════════════════════════════ */
+:root {
+  --blue: #0038FF;
+  --blue-dark: #001A99;
+  --green: #CCFF00;
+  --white: #ffffff;
+  --black: #000000;
+  --glass: rgba(255,255,255,0.12);
+  --glass-border: rgba(255,255,255,0.22);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+  --sidebar-w: 300px;
+  --header-h: 60px;
+  --bottom-nav-h: 60px;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html { height:100%; }
+
+body {
+  font-family:'DM Mono',monospace;
+  background:var(--blue);
+  color:var(--white);
+  height:100%;
+  min-height:100dvh;
+  overflow:hidden;
+  overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased;
+}
+
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background:
+    linear-gradient(to right, rgba(255,255,255,0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.07) 1px, transparent 1px);
+  background-size:3.5rem 3.5rem;
+  pointer-events:none; z-index:0;
+}
+
+.screen { display:none; }
+.screen.active { display:flex; }
+
+/* ══════════════════════════════════
+   ONBOARDING
+══════════════════════════════════ */
+#screen-onboard {
+  height:100dvh;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  z-index:10;
+  padding:max(1.5rem,var(--safe-top)) 1.5rem max(1.5rem,var(--safe-bot));
+  animation:fadeUp 0.45s ease;
+  overflow-y:auto;
+}
+
+.onboard-inner {
+  position:relative; z-index:2;
+  display:flex; flex-direction:column;
+  align-items:center; text-align:center;
+  width:100%; max-width:480px;
+}
+
+.hero-title {
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(4.5rem,22vw,14rem);
+  line-height:0.85; letter-spacing:0.02em; color:var(--green);
+  text-shadow:
+    2px 2px 0 var(--blue-dark),4px 4px 0 var(--blue-dark),
+    6px 6px 0 var(--blue-dark),8px 8px 0 var(--blue-dark),
+    10px 10px 0 var(--blue-dark),12px 12px 0 var(--blue-dark);
+  user-select:none;
+}
+
+.hero-sub {
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(1.4rem,5.5vw,4rem);
+  line-height:1; color:var(--white);
+  text-shadow:1px 1px 0 var(--blue-dark),3px 3px 0 var(--blue-dark),5px 5px 0 var(--blue-dark);
+  margin-top:0.3rem; letter-spacing:0.08em;
+}
+
+.onboard-card {
+  margin-top:2rem;
+  background:var(--glass);
+  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+  border:1.5px solid var(--glass-border);
+  border-radius:1.5rem;
+  padding:1.75rem;
+  width:100%;
+  box-shadow:0 24px 60px rgba(0,0,0,0.3);
+}
+
+.field-label {
+  display:block; font-size:0.62rem; text-transform:uppercase;
+  letter-spacing:0.18em; color:rgba(255,255,255,0.55); margin-bottom:0.5rem;
+}
+
+.field-input {
+  width:100%;
+  background:rgba(255,255,255,0.1);
+  border:1.5px solid var(--glass-border);
+  border-radius:12px; padding:0.9rem 1rem;
+  color:var(--white); font-family:'DM Mono',monospace;
+  font-size:1rem; /* 16px prevents iOS zoom */
+  outline:none; transition:border-color 0.2s,background 0.2s;
+  -webkit-appearance:none;
+}
+.field-input:focus { border-color:var(--green); background:rgba(255,255,255,0.15); }
+.field-input::placeholder { color:rgba(255,255,255,0.3); }
+
+.btn-main {
+  width:100%; margin-top:1rem; padding:1rem;
+  background:var(--green); color:var(--black);
+  font-family:'Syne',sans-serif; font-weight:800;
+  font-size:0.9rem; letter-spacing:0.05em; text-transform:uppercase;
+  border:none; border-radius:12px; cursor:pointer;
+  min-height:48px; transition:transform 0.15s,box-shadow 0.15s;
+  -webkit-appearance:none;
+}
+.btn-main:active { transform:scale(0.97); }
+
+/* Deco cards (desktop only) */
+.deco-card {
+  position:absolute; width:130px;
+  background:var(--glass); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  border:1.5px solid var(--glass-border); border-radius:1.4rem;
+  padding:1rem; display:flex; flex-direction:column; align-items:center; gap:0.5rem;
+  animation:floatL 5s ease-in-out infinite;
+}
+.deco-card:nth-child(2) { animation-delay:-2s; animation-duration:6s; }
+.deco-card-left  { left:4%; top:48%; }
+.deco-card-right { right:4%; top:38%; animation-name:floatR; }
+.deco-avatar { width:48px; height:48px; border-radius:50%; overflow:hidden; border:2px solid var(--glass-border); }
+.deco-avatar img { width:100%; height:100%; object-fit:cover; }
+.deco-name { font-family:'Syne',sans-serif; font-weight:700; font-size:0.72rem; color:var(--white); }
+.deco-pts  { font-size:0.6rem; color:var(--green); background:rgba(204,255,0,0.12); border-radius:20px; padding:0.12rem 0.45rem; }
+
+.circular-badge {
+  position:absolute; bottom:10%; right:6%;
+  width:88px; height:88px; background:var(--green); border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  transform:rotate(12deg); cursor:pointer;
+  transition:transform 0.3s; box-shadow:0 8px 28px rgba(204,255,0,0.3); z-index:5;
+}
+.circular-badge:active { transform:rotate(0deg) scale(0.96); }
+.badge-spin { position:absolute; inset:4px; animation:spin 10s linear infinite; }
+.badge-inner-svg { width:28px; height:28px; }
+
+@media (max-width:860px) { .deco-card,.circular-badge { display:none; } }
+
+/* ══════════════════════════════════
+   MAIN APP
+══════════════════════════════════ */
+#screen-main {
+  height:100dvh; flex-direction:row;
+  position:relative; z-index:10; overflow:hidden;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width:var(--sidebar-w); min-width:var(--sidebar-w);
+  display:flex; flex-direction:column;
+  background:rgba(0,18,110,0.65);
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  border-right:1.5px solid var(--glass-border);
+  overflow:hidden; position:relative; z-index:20;
+  padding-bottom:var(--safe-bot);
+  transition:transform 0.3s cubic-bezier(0.4,0,0.2,1),opacity 0.3s;
+}
+.sidebar.hidden { transform:translateX(-100%); opacity:0; pointer-events:none; }
+
+.sidebar-header {
+  padding:0.9rem 1.1rem;
+  padding-top:calc(0.9rem + var(--safe-top));
+  border-bottom:1.5px solid var(--glass-border);
+  display:flex; align-items:center; justify-content:space-between;
+  min-height:var(--header-h);
+}
+
+.logo-wrap { display:flex; align-items:center; gap:4px; }
+.logo-a {
+  background:var(--white); color:var(--black);
+  font-family:'Syne',sans-serif; font-weight:800;
+  font-size:0.8rem; padding:0.28rem 0.65rem;
+  border-radius:1rem 1rem 1rem 0.2rem;
+}
+.logo-b {
+  background:var(--green); color:var(--black);
+  font-family:'Syne',sans-serif; font-weight:800;
+  font-size:0.8rem; padding:0.28rem 0.65rem; border-radius:1rem;
+}
+
+.user-pill {
+  display:flex; align-items:center; gap:0.4rem;
+  background:var(--glass); border:1px solid var(--glass-border);
+  border-radius:20px; padding:0.22rem 0.6rem 0.22rem 0.22rem;
+  font-size:0.7rem; color:rgba(255,255,255,0.7);
+}
+
+.av {
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-family:'Syne',sans-serif; font-weight:800; flex-shrink:0;
+}
+
+.loc-bar {
+  padding:0.55rem 1.1rem; border-bottom:1.5px solid var(--glass-border);
+  display:flex; align-items:center; gap:0.5rem;
+  font-size:0.68rem; color:rgba(255,255,255,0.5);
+}
+.loc-dot {
+  width:7px; height:7px; border-radius:50%;
+  background:var(--green); box-shadow:0 0 8px var(--green);
+  animation:blink 2s ease infinite; flex-shrink:0;
+}
+
+.sidebar-section-label {
+  padding:0.65rem 1.1rem 0.3rem;
+  font-size:0.6rem; text-transform:uppercase; letter-spacing:0.18em;
+  color:rgba(255,255,255,0.38);
+  display:flex; align-items:center; justify-content:space-between;
+}
+
+.btn-new {
+  background:var(--green); color:var(--black);
+  font-family:'Syne',sans-serif; font-weight:700;
+  font-size:0.68rem; padding:0.32rem 0.75rem;
+  border-radius:20px; border:none; cursor:pointer; min-height:32px;
+}
+.btn-new:active { opacity:0.85; }
+
+.rooms-list {
+  flex:1; overflow-y:auto; padding:0.4rem 0.55rem 0.6rem;
+  -webkit-overflow-scrolling:touch;
+}
+.rooms-list::-webkit-scrollbar { width:3px; }
+.rooms-list::-webkit-scrollbar-thumb { background:var(--glass-border); border-radius:2px; }
+
+.room-item {
+  padding:0.85rem 0.8rem; border-radius:14px; cursor:pointer;
+  transition:background 0.15s; margin-bottom:3px;
+  border:1px solid transparent; min-height:60px;
+}
+.room-item:active { background:var(--glass); }
+.room-item.active { background:rgba(204,255,0,0.1); border-color:rgba(204,255,0,0.28); }
+
+.room-name-row {
+  font-family:'Syne',sans-serif; font-weight:700; font-size:0.82rem;
+  color:var(--white); display:flex; align-items:center; gap:0.4rem;
+  margin-bottom:0.25rem; flex-wrap:wrap;
+}
+.room-meta-row {
+  display:flex; align-items:center; gap:0.5rem;
+  font-size:0.67rem; color:rgba(255,255,255,0.42); flex-wrap:wrap;
+}
+.chip { font-size:0.58rem; font-family:'Syne',sans-serif; font-weight:600; padding:0.1rem 0.38rem; border-radius:20px; }
+.chip-green { background:rgba(204,255,0,0.15); color:var(--green); }
+.chip-exp   { color:rgba(255,170,90,0.85); font-size:0.58rem; }
+
+.feature-strip {
+  background:var(--white); color:var(--black);
+  border-radius:1rem 1rem 0 0; padding:0.75rem 1.1rem;
+  display:flex; gap:0.6rem; align-items:center;
+  font-family:'Syne',sans-serif; font-weight:700;
+  font-size:0.62rem; text-transform:uppercase; letter-spacing:0.07em; margin-top:auto;
+}
+.fp { border-radius:20px; padding:0.25rem 0.65rem; font-size:0.6rem; }
+.fp-blue  { background:var(--blue);  color:var(--white); }
+.fp-green { background:var(--green); color:var(--black); }
+
+/* ── CHAT AREA ── */
+.chat-area {
+  flex:1; display:flex; flex-direction:column; overflow:hidden;
+  background:rgba(0,0,50,0.28);
+  backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px);
+  min-width:0;
+  transition:transform 0.3s cubic-bezier(0.4,0,0.2,1),opacity 0.3s;
+}
+.chat-area.hidden { transform:translateX(100%); opacity:0; pointer-events:none; }
+
+.chat-header {
+  padding:0.8rem 1.2rem;
+  padding-top:calc(0.8rem + var(--safe-top));
+  border-bottom:1.5px solid var(--glass-border);
+  background:rgba(0,18,110,0.5);
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  display:flex; align-items:center; justify-content:space-between;
+  min-height:var(--header-h); gap:0.75rem; flex-shrink:0;
+}
+
+.btn-back {
+  display:none; align-items:center; justify-content:center;
+  width:38px; height:38px; min-width:38px;
+  background:var(--glass); border:1px solid var(--glass-border);
+  border-radius:10px; cursor:pointer; color:var(--white); flex-shrink:0;
+}
+.btn-back:active { background:rgba(255,255,255,0.2); }
+
+.chat-room-title {
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(1.1rem,4vw,1.6rem);
+  letter-spacing:0.06em; color:var(--white);
+  display:flex; align-items:center; gap:0.5rem; line-height:1; flex-wrap:wrap;
+}
+.chat-room-title span:first-child {
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;
+}
+.chat-room-info { font-size:0.65rem; color:rgba(255,255,255,0.42); margin-top:0.12rem; }
+
+.chat-header-right { display:flex; align-items:center; gap:0.5rem; flex-shrink:0; }
+
+.members-row { display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap; }
+.member-chip {
+  display:flex; align-items:center; gap:0.3rem;
+  background:var(--glass); border:1px solid var(--glass-border);
+  border-radius:20px; padding:0.18rem 0.5rem 0.18rem 0.18rem;
+  font-size:0.65rem; color:rgba(255,255,255,0.68);
+}
+
+.btn-exit {
+  display:flex; align-items:center; gap:0.35rem;
+  background:rgba(255,55,55,0.12); border:1.5px solid rgba(255,80,80,0.28);
+  border-radius:10px; padding:0.42rem 0.75rem;
+  color:rgba(255,120,120,0.88);
+  font-family:'Syne',sans-serif; font-weight:700; font-size:0.7rem;
+  cursor:pointer; white-space:nowrap; min-height:36px;
+}
+.btn-exit:active { background:rgba(255,55,55,0.22); }
+
+.messages {
+  flex:1; overflow-y:auto; padding:1rem 1.1rem;
+  display:flex; flex-direction:column; gap:0.8rem;
+  -webkit-overflow-scrolling:touch;
+}
+.messages::-webkit-scrollbar { width:3px; }
+.messages::-webkit-scrollbar-thumb { background:var(--glass-border); border-radius:2px; }
+
+.msg { display:flex; gap:0.65rem; animation:fadeUp 0.2s ease; }
+
+.msg-av {
+  width:32px; height:32px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Syne',sans-serif; font-weight:800; font-size:0.68rem; margin-top:2px;
+}
+.msg-body { flex:1; min-width:0; }
+.msg-head { display:flex; align-items:baseline; gap:0.5rem; margin-bottom:0.22rem; flex-wrap:wrap; }
+.msg-user { font-family:'Syne',sans-serif; font-weight:700; font-size:0.78rem; }
+.msg-time  { font-size:0.6rem; color:rgba(255,255,255,0.32); }
+.msg-text {
+  font-size:0.85rem; line-height:1.6; color:rgba(255,255,255,0.82);
+  background:var(--glass); border:1px solid var(--glass-border);
+  border-radius:0 14px 14px 14px; padding:0.55rem 0.85rem;
+  display:inline-block; max-width:min(520px,82vw); word-break:break-word;
+}
+.msg.own .msg-text {
+  background:rgba(204,255,0,0.1); border-color:rgba(204,255,0,0.22);
+  border-radius:14px 0 14px 14px; color:rgba(255,255,255,0.92);
+}
+
+.sys-msg {
+  text-align:center; font-size:0.64rem; color:rgba(255,255,255,0.28);
+  display:flex; align-items:center; gap:0.5rem;
+}
+.sys-msg::before,.sys-msg::after { content:''; flex:1; height:1px; background:var(--glass-border); }
+
+.typing-bar {
+  height:22px; padding:0 1.1rem;
+  font-size:0.68rem; color:rgba(255,255,255,0.33);
+  display:flex; align-items:center; gap:0.4rem; flex-shrink:0;
+}
+.dots span {
+  display:inline-block; width:5px; height:5px; border-radius:50%;
+  background:var(--green); animation:db 1.2s ease infinite; margin-right:2px;
+}
+.dots span:nth-child(2) { animation-delay:0.2s; }
+.dots span:nth-child(3) { animation-delay:0.4s; }
+
+.input-row {
+  padding:0.75rem 1.1rem;
+  padding-bottom:calc(0.75rem + var(--safe-bot));
+  border-top:1.5px solid var(--glass-border);
+  background:rgba(0,18,110,0.45);
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  display:flex; gap:0.65rem; align-items:flex-end; flex-shrink:0;
+}
+
+.chat-input {
+  flex:1; background:var(--glass); border:1.5px solid var(--glass-border);
+  border-radius:14px; padding:0.7rem 0.9rem;
+  color:var(--white); font-family:'DM Mono',monospace;
+  font-size:1rem; /* 16px prevents iOS zoom */
+  outline:none; resize:none; transition:border-color 0.2s;
+  min-height:44px; max-height:100px; -webkit-appearance:none; line-height:1.4;
+}
+.chat-input:focus { border-color:var(--green); }
+.chat-input::placeholder { color:rgba(255,255,255,0.28); }
+
+.send-btn {
+  width:44px; height:44px; min-width:44px;
+  border-radius:12px; border:none; background:var(--green);
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:transform 0.15s; flex-shrink:0;
+}
+.send-btn:active { transform:scale(0.92); }
+.send-btn svg { stroke:var(--black); }
+
+.empty-state {
+  flex:1; flex-direction:column; align-items:center; justify-content:center;
+  gap:0.8rem; color:rgba(255,255,255,0.28); text-align:center; padding:2rem;
+  position:relative; overflow:hidden;
+}
+.empty-big {
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(4rem,15vw,10rem); line-height:0.85;
+  color:rgba(255,255,255,0.03); position:absolute;
+  pointer-events:none; user-select:none; letter-spacing:0.04em;
+}
+.empty-icon  { font-size:2.8rem; filter:grayscale(1) opacity(0.25); }
+.empty-title { font-family:'Syne',sans-serif; font-size:0.95rem; font-weight:700; color:rgba(255,255,255,0.38); }
+.empty-sub   { font-size:0.72rem; color:rgba(255,255,255,0.2); }
+
+#active-chat { display:none; flex-direction:column; height:100%; min-height:0; }
+
+/* ══════════════════════════════════
+   MODAL — bottom sheet style
+══════════════════════════════════ */
+.modal-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,40,0.72);
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  z-index:300; align-items:flex-end; justify-content:center;
+}
+.modal-overlay.open { display:flex; }
+
+.modal {
+  background:rgba(0,25,140,0.95);
+  backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
+  border:1.5px solid var(--glass-border);
+  border-radius:24px 24px 0 0;
+  padding:1.75rem 1.5rem;
+  padding-bottom:calc(1.75rem + var(--safe-bot));
+  width:100%; max-width:100%;
+  max-height:90dvh; overflow-y:auto;
+  box-shadow:0 -20px 60px rgba(0,0,0,0.4);
+  animation:slideUp 0.25s ease;
+}
+
+.modal-drag { width:40px; height:4px; background:var(--glass-border); border-radius:2px; margin:0 auto 1.2rem; }
+.modal-title {
+  font-family:'Bebas Neue',sans-serif; font-size:1.8rem;
+  letter-spacing:0.06em; color:var(--green); margin-bottom:1.2rem;
+}
+.modal-field { margin-bottom:0.9rem; }
+.modal-actions { display:flex; gap:0.7rem; margin-top:1.2rem; }
+.modal-actions .btn-main { flex:1; margin:0; }
+
+.btn-ghost {
+  flex:1; padding:1rem;
+  background:transparent; border:1.5px solid var(--glass-border);
+  border-radius:12px; color:rgba(255,255,255,0.55);
+  font-family:'Syne',sans-serif; font-weight:700; font-size:0.85rem;
+  cursor:pointer; min-height:48px;
+}
+.btn-ghost:active { border-color:rgba(255,255,255,0.4); color:var(--white); }
+
+/* ══════════════════════════════════
+   MOBILE BOTTOM NAV
+══════════════════════════════════ */
+.mobile-nav {
+  display:none;
+  position:fixed; bottom:0; left:0; right:0;
+  background:rgba(0,18,110,0.95);
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  border-top:1.5px solid var(--glass-border);
+  padding:0.5rem 1rem calc(0.5rem + var(--safe-bot));
+  z-index:100;
+  align-items:center; justify-content:space-around; gap:0.5rem;
+}
+
+.nav-btn {
+  display:flex; flex-direction:column; align-items:center; gap:0.2rem;
+  background:none; border:none; cursor:pointer; color:rgba(255,255,255,0.42);
+  font-family:'Syne',sans-serif; font-weight:700; font-size:0.58rem;
+  letter-spacing:0.05em; text-transform:uppercase;
+  padding:0.35rem 1.2rem; border-radius:10px;
+  min-height:44px; min-width:64px; transition:color 0.15s,background 0.15s;
+}
+.nav-btn.active { color:var(--green); background:rgba(204,255,0,0.08); }
+.nav-btn svg { width:20px; height:20px; }
+
+.nav-fab {
+  width:50px; height:50px; border-radius:14px;
+  background:var(--green); border:none;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; box-shadow:0 4px 16px rgba(204,255,0,0.35);
+  transition:transform 0.15s;
+}
+.nav-fab:active { transform:scale(0.92); }
+
+/* ══════════════════════════════════
+   ANIMATIONS
+══════════════════════════════════ */
+@keyframes fadeUp  { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
+@keyframes slideUp { from{transform:translateY(100%)}to{transform:translateY(0)} }
+@keyframes floatL  { 0%,100%{transform:translateY(-50%) rotate(-10deg)}50%{transform:translateY(calc(-50% - 12px)) rotate(-10deg)} }
+@keyframes floatR  { 0%,100%{transform:translateY(-50%) rotate(10deg)}50%{transform:translateY(calc(-50% - 14px)) rotate(10deg)} }
+@keyframes spin    { to{transform:rotate(360deg)} }
+@keyframes blink   { 0%,100%{opacity:1}50%{opacity:0.3} }
+@keyframes db      { 0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)} }
+
+/* ══════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════ */
+
+/* Tablet 600–860px */
+@media (max-width:860px) {
+  :root { --sidebar-w:255px; }
+  .members-row { display:none; }
+  .chat-room-title span:first-child { max-width:150px; }
+  .feature-strip { padding:0.6rem 1rem; }
+}
+
+/* Mobile ≤600px */
+@media (max-width:600px) {
+  :root { --sidebar-w:100%; --header-h:56px; --bottom-nav-h:58px; }
+
+  .mobile-nav { display:flex; }
+
+  #screen-main { flex-direction:column; }
+
+  /* Panels fill full screen */
+  .sidebar {
+    position:absolute; inset:0;
+    width:100%; min-width:100%;
+    border-right:none;
+    padding-bottom:calc(var(--bottom-nav-h) + var(--safe-bot));
+  }
+
+  .chat-area {
+    position:absolute; inset:0; width:100%;
+    padding-bottom:calc(var(--bottom-nav-h) + var(--safe-bot));
+  }
+
+  /* Back button visible */
+  .btn-back { display:flex; }
+
+  .chat-room-title span:first-child { max-width:120px; }
+  .feature-strip { display:none; }
+
+  .messages { padding:0.85rem; gap:0.7rem; }
+  .msg-text { font-size:0.88rem; max-width:88vw; }
+
+  .room-item { min-height:64px; padding:0.9rem 0.85rem; }
+
+  #screen-onboard { padding:max(1rem,var(--safe-top)) 1.2rem max(1.2rem,var(--safe-bot)); }
+  .onboard-card { padding:1.5rem 1.4rem; border-radius:1.25rem; }
+
+  .sidebar-header { padding-left:1rem; padding-right:1rem; }
+  .loc-bar { padding:0.5rem 1rem; }
+}
+
+/* Very small phones ≤380px */
+@media (max-width:380px) {
+  .hero-title { font-size:clamp(3.8rem,24vw,5.5rem); }
+  .onboard-card { padding:1.3rem 1.1rem; }
+  .chat-room-title span:first-child { max-width:95px; }
+  .btn-exit span { display:none; } /* hide "Leave" text, show icon only */
+}
+
+/* Large desktop */
+@media (min-width:1200px) {
+  :root { --sidebar-w:320px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════ ONBOARDING ════════════ -->
+<div id="screen-onboard" class="screen active">
+
+  <div class="deco-card deco-card-left">
+    <div class="deco-avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&backgroundColor=D2B48C" alt=""></div>
+    <div class="deco-name">localrat.eth</div>
+    <div class="deco-pts">📍 0.4km away</div>
+  </div>
+  <div class="deco-card deco-card-right">
+    <div class="deco-avatar"><img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=Sarah" alt=""></div>
+    <div class="deco-name">nightcrawler</div>
+    <div class="deco-pts">📍 1.8km away</div>
+  </div>
+
+  <div class="circular-badge">
+    <div class="badge-spin">
+      <svg viewBox="0 0 100 100" style="width:100%;height:100%">
+        <path id="cp" d="M 50,50 m -36,0 a 36,36 0 1,1 72,0 a 36,36 0 1,1 -72,0" fill="none"/>
+        <text style="font-size:10px;font-family:'Syne',sans-serif;font-weight:800;letter-spacing:0.18em;fill:#000">
+          <textPath href="#cp" startOffset="0%">JOIN FREE • JOIN FREE • </textPath>
+        </text>
+      </svg>
+    </div>
+    <svg class="badge-inner-svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  </div>
+
+  <div class="onboard-inner">
+    <div class="hero-title">CHATRAT</div>
+    <div class="hero-sub">Chat within 10km</div>
+    <div class="onboard-card">
+      <label class="field-label" for="uname">Pick your handle</label>
+      <input class="field-input" type="text" id="uname"
+        placeholder="e.g. streetrat_99" maxlength="20"
+        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+      <button class="btn-main" onclick="startApp()">📡 &nbsp;Find rooms near me</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ MAIN APP ════════════ -->
+<div id="screen-main" class="screen">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-wrap">
+        <div class="logo-a">CHAT</div>
+        <div class="logo-b">RAT</div>
+      </div>
+      <div class="user-pill">
+        <div class="av" id="hdr-av" style="width:22px;height:22px;font-size:0.6rem"></div>
+        <span id="hdr-name"></span>
+      </div>
+    </div>
+    <div class="loc-bar">
+      <div class="loc-dot"></div>
+      <span id="loc-label">Detecting location…</span>
+    </div>
+    <div class="sidebar-section-label">
+      <span>Nearby Rooms</span>
+      <button class="btn-new" onclick="openModal()">+ New</button>
+    </div>
+    <div class="rooms-list" id="rooms-list"></div>
+    <div class="feature-strip">
+      <span>10km radius</span>
+      <div class="fp fp-green">Live</div>
+      <div class="fp fp-blue">4h rooms</div>
+    </div>
+  </div>
+
+  <!-- CHAT AREA -->
+  <div class="chat-area hidden" id="chat-area">
+
+    <div id="empty-state" class="empty-state" style="display:flex">
+      <div class="empty-big">CHATRAT</div>
+      <div class="empty-icon">📡</div>
+      <div class="empty-title">Pick a room to join</div>
+      <div class="empty-sub">Select a nearby room or create your own</div>
+    </div>
+
+    <div id="active-chat">
+      <div class="chat-header">
+        <button class="btn-back" onclick="goBack()" aria-label="Back">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+        </button>
+        <div style="flex:1;min-width:0">
+          <div class="chat-room-title" id="chat-title"></div>
+          <div class="chat-room-info" id="chat-info"></div>
+        </div>
+        <div class="chat-header-right">
+          <div class="members-row" id="members-row"></div>
+          <button class="btn-exit" onclick="exitRoom()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            <span>Leave</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="messages" id="messages"></div>
+      <div class="typing-bar" id="typing-bar"></div>
+
+      <div class="input-row">
+        <textarea class="chat-input" id="chat-input"
+          placeholder="Send a message…" rows="1"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" onclick="sendMsg()" aria-label="Send">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="mobile-nav" id="mobile-nav">
+    <button class="nav-btn active" id="nav-rooms" onclick="mobileShowRooms()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      Rooms
+    </button>
+    <button class="nav-fab" onclick="openModal()" aria-label="New room">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </button>
+    <button class="nav-btn" id="nav-chat" onclick="mobileShowChat()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      Chat
+    </button>
+  </nav>
+</div>
+
+<!-- ════════════ MODAL ════════════ -->
+<div class="modal-overlay" id="modal" onclick="handleOverlay(event)">
+  <div class="modal" id="modal-inner">
+    <div class="modal-drag"></div>
+    <div class="modal-title">🐀 New Room</div>
+    <div class="modal-field">
+      <label class="field-label">Room name</label>
+      <input class="field-input" type="text" id="room-name"
+        placeholder="e.g. Chai Gang ☕" maxlength="40"
+        autocorrect="off" autocapitalize="none">
+    </div>
+    <div class="modal-field">
+      <label class="field-label">Topic (optional)</label>
+      <input class="field-input" type="text" id="room-topic"
+        placeholder="Music, food, tech…" maxlength="60"
+        autocorrect="off" autocapitalize="none">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn-main" style="flex:1;margin:0" onclick="createRoom()">Create</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──
+const API_BASE_URL = "https://chatrat-backend.ojalrathee.workers.dev/v1";
+const WS_BASE_URL = "wss://chatrat-backend.ojalrathee.workers.dev/v1";
+
+// ── STATE ──
+let me = localStorage.getItem('chatrat_name') || null;
+let token = localStorage.getItem('chatrat_token') || null;
+let userId = localStorage.getItem('chatrat_uid') || null;
+let currentRoom = null, rooms = [], socket = null;
+let lastGeo = null; // {lat,lng} saved after first geolocation
+let nearbyPollInFlight = false;
+let intentionalLeave = false;
+let mobileView = 'rooms'; // mobile-only: 'rooms'|'chat' (keeps WS connected even when hidden)
+
+// ── HELPERS ──
+const COLORS = [['#CCFF00','#1a2200'],['#ff6aad','#2e0014'],['#6af7c2','#002218']];
+function col(n){ let h=0; for(let c of n) h=(h*31+c.charCodeAt(0))&0xff; return COLORS[h%COLORS.length]; }
+function esc(t){ return t ? String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
+function isMobile(){ return window.innerWidth <= 600; }
+function autoResize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+
+function getTimeLeft(expiryIso) {
+  const diff = new Date(expiryIso) - Date.now();
+  if (diff <= 0) return "Exp";
+  const mins = Math.floor(diff / 1000 / 60);
+  return mins < 60 ? `${mins}m` : `${Math.floor(mins/60)}h ${mins%60}m`;
+}
+
+// ── APP START ──
+async function startApp() {
+  const nameInput = document.getElementById('uname');
+  const name = nameInput.value.trim() || me;
+  if (!name || name.length < 2) { nameInput.focus(); return; }
+
+  const btn = document.querySelector('#screen-onboard .btn-main');
+  btn.textContent = "📡 CONNECTING...";
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ handle: name })
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.message);
+
+    me = result.data.handle;
+    token = result.data.token;
+    userId = result.data.userId;
+    localStorage.setItem('chatrat_name', me);
+    localStorage.setItem('chatrat_token', token);
+    localStorage.setItem('chatrat_uid', userId);
+
+    document.getElementById('screen-onboard').classList.remove('active');
+    document.getElementById('screen-main').classList.add('active');
+    
+    updateProfileUI(); 
+    refreshNearbyRooms();
+    mobileView = 'rooms';
+    syncLayout();
+
+  } catch (err) {
+    alert("Connection Error: " + err.message);
+    btn.textContent = "📡 FIND ROOMS NEAR ME";
+    btn.disabled = false;
+  }
+}
+
+async function refreshNearbyRooms() {
+  document.getElementById('loc-label').textContent = '🛰️ Syncing GPS...';
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const { latitude, longitude } = pos.coords;
+    lastGeo = { lat: latitude, lng: longitude };
+    document.getElementById('loc-label').textContent = `📍 ${latitude.toFixed(2)}, ${longitude.toFixed(2)} · within 10km`;
+    await fetchNearbyRooms(latitude, longitude);
+  }, (err) => {
+    console.error(err);
+    document.getElementById('loc-label').textContent = '📍 Location unavailable';
+  });
+}
+
+function mergeNearbyRooms(nextRooms) {
+  const existing = new Map(rooms.map(r => [r.id, r]));
+
+  nextRooms.forEach(nr => {
+    const cur = existing.get(nr.id);
+    if (cur) {
+      // Only update fields shown in the sidebar; preserve room/messages state.
+      cur.name = nr.name;
+      cur.topic = nr.topic;
+      cur.lat = nr.lat;
+      cur.lng = nr.lng;
+      cur.distanceKm = nr.distanceKm;
+      cur.expiresAt = nr.expiresAt;
+      cur.liveCount = nr.liveCount;
+      return;
+    }
+    rooms.push(nr);
+  });
+}
+
+function pruneExpiredRooms() {
+  // Keep objects stable to avoid breaking open chat references.
+  const now = Date.now();
+  for (let i = rooms.length - 1; i >= 0; i--) {
+    const r = rooms[i];
+    if (r.id === currentRoom) continue;
+    if (!r.expiresAt) continue;
+    if (new Date(r.expiresAt).getTime() <= now) rooms.splice(i, 1);
+  }
+}
+
+async function fetchNearbyRooms(lat, lng) {
+  if (!lat || !lng) return;
+  if (nearbyPollInFlight) return;
+  nearbyPollInFlight = true;
+  try {
+    const res = await fetch(`${API_BASE_URL}/rooms/nearby?lat=${lat}&lng=${lng}`);
+    const result = await res.json();
+    const nextRooms = (result.data && result.data.rooms) ? result.data.rooms : [];
+    mergeNearbyRooms(nextRooms);
+    pruneExpiredRooms();
+    renderRooms();
+  } catch (e) {
+    console.error(e);
+  } finally {
+    nearbyPollInFlight = false;
+  }
+}
+
+// ── ROOMS & UI ──
+function renderRooms() {
+  const el = document.getElementById('rooms-list');
+  el.innerHTML = '';
+  const active = rooms.filter(r => new Date(r.expiresAt) > Date.now())
+                      .sort((a, b) => a.distanceKm - b.distanceKm);
+
+  if (!active.length) {
+    el.innerHTML = `<div style="padding:1.2rem;text-align:center;color:rgba(255,255,255,0.2)">No rooms nearby.</div>`;
+    return;
+  }
+
+  active.forEach(r => {
+    const el2 = document.createElement('div');
+    el2.className = 'room-item' + (r.id === currentRoom ? ' active' : '');
+    el2.innerHTML = `
+      <div class="room-name-row">${esc(r.name)} <span class="chip chip-green">${r.liveCount || 0} live</span></div>
+      <div class="room-meta-row">
+        <span style="color:#CCFF00">📍 ${r.distanceKm.toFixed(1)}km</span>
+        <span class="chip-exp">⏳ ${getTimeLeft(r.expiresAt)}</span>
+      </div>`;
+    el2.onclick = () => openRoom(r.id);
+    el.appendChild(el2);
+  });
+}
+
+async function openRoom(id) {
+  const room = rooms.find(r => r.id === id);
+  if (!room) return;
+  currentRoom = id;
+  intentionalLeave = false;
+  if (isMobile()) mobileView = 'chat';
+  room.messages = [];
+  room.members = room.members || [];
+  room.typingHandles = room.typingHandles || new Set();
+  room.typingHandles.clear();
+  // Reset transient UI state for this room.
+  document.getElementById('typing-bar').innerHTML = '';
+  renderMembers(room);
+  syncLayout();
+
+  try {
+    const msgRes = await fetch(`${API_BASE_URL}/rooms/${id}/messages`);
+    const msgData = await msgRes.json();
+    if (msgData.ok) {
+      room.messages = msgData.data.messages.map(m => ({
+        id: m.id, user: m.handle || "System", text: m.body,
+        time: new Date(m.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+        own: m.handle === me, system: m.kind === 'system'
+      }));
+    }
+  } catch (err) { console.error(err); }
+
+  document.getElementById('chat-title').innerHTML = `<span>${esc(room.name)}</span><span class="chip chip-green">${room.distanceKm.toFixed(1)}km</span>`;
+  renderMessages(room);
+
+  if (socket) socket.close();
+  socket = new WebSocket(`${WS_BASE_URL}/rooms/${id}/ws?token=${token}`);
+  const roomId = id;
+  let disconnectMsgShown = false;
+  socket.onclose = () => {
+    socket = null;
+    if (intentionalLeave || currentRoom !== roomId || disconnectMsgShown) return;
+    disconnectMsgShown = true;
+    room.typingHandles && room.typingHandles.clear();
+    document.getElementById('typing-bar').innerHTML = '';
+    room.messages.push({
+      id: 'sys' + Date.now() + Math.random().toString(16).slice(2),
+      user: 'System',
+      text: 'Disconnected.',
+      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+      own: false,
+      system: true
+    });
+    renderMessages(room);
+  };
+  socket.onerror = () => {
+    socket = null;
+    if (intentionalLeave || currentRoom !== roomId || disconnectMsgShown) return;
+    disconnectMsgShown = true;
+    room.typingHandles && room.typingHandles.clear();
+    document.getElementById('typing-bar').innerHTML = '';
+    room.messages.push({
+      id: 'sys' + Date.now() + Math.random().toString(16).slice(2),
+      user: 'System',
+      text: 'Connection error.',
+      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+      own: false,
+      system: true
+    });
+    renderMessages(room);
+  };
+
+  socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (!data || typeof data.type !== 'string') return;
+
+    if (data.type === 'message') {
+      room.messages.push({
+        id: data.messageId,
+        user: data.handle || "System",
+        text: data.body,
+        time: new Date(data.at || Date.now()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+        own: data.handle === me,
+        system: false
+      });
+      renderMessages(room);
+      return;
+    }
+
+    if (data.type === 'room_state') {
+      room.liveCount = typeof data.liveCount === 'number' ? data.liveCount : room.liveCount;
+      room.expiresAt = data.expiresAt || room.expiresAt;
+      room.members = (data.membersPreview || []).map(m => m.handle);
+      renderMembers(room);
+      renderRooms();
+      return;
+    }
+
+    if (data.type === 'member_joined') {
+      const h = data.handle;
+      if (!h) return;
+      // Keep member chips unique by handle.
+      const has = room.members.includes(h);
+      if (!has) room.members.push(h);
+      room.liveCount = Math.max(0, (room.liveCount || 0) + (has ? 0 : 1));
+
+      room.messages.push({
+        id: 'sys' + Date.now() + Math.random().toString(16).slice(2),
+        user: 'System',
+        text: `${h} joined`,
+        time: new Date(data.at || Date.now()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+        own: false,
+        system: true
+      });
+      renderMessages(room);
+      renderMembers(room);
+      renderRooms();
+      return;
+    }
+
+    if (data.type === 'member_left') {
+      const h = data.handle;
+      if (!h) return;
+      const had = room.members.includes(h);
+      if (had) room.members = room.members.filter(x => x !== h);
+      room.liveCount = Math.max(0, (room.liveCount || 0) - (had ? 1 : 0));
+
+      room.messages.push({
+        id: 'sys' + Date.now() + Math.random().toString(16).slice(2),
+        user: 'System',
+        text: `${h} left the room`,
+        time: new Date(data.at || Date.now()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+        own: false,
+        system: true
+      });
+      renderMessages(room);
+      renderMembers(room);
+      renderRooms();
+      return;
+    }
+
+    if (data.type === 'typing') {
+      const h = data.handle;
+      const isTyping = !!data.isTyping;
+      if (!h || h === me) return; // don't show "you typing"
+
+      if (isTyping) room.typingHandles.add(h);
+      else room.typingHandles.delete(h);
+
+      if (room.typingHandles.size > 0) {
+        const who = Array.from(room.typingHandles)[0];
+        document.getElementById('typing-bar').innerHTML =
+          `<span>${esc(who)} is typing</span>` +
+          `<span class="dots"><span></span><span></span><span></span></span>`;
+      } else {
+        document.getElementById('typing-bar').innerHTML = '';
+      }
+      return;
+    }
+
+    if (data.type === 'error') {
+      // If backend rejects auth or the room is expired, show as system message.
+      room.messages.push({
+        id: 'sys' + Date.now() + Math.random().toString(16).slice(2),
+        user: 'System',
+        text: data.message || 'Error',
+        time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+        own: false,
+        system: true
+      });
+      renderMessages(room);
+      if (data.code === 'room_expired') exitRoom();
+      return;
+    }
+  };
+}
+
+function renderMessages(room) {
+  const el = document.getElementById('messages');
+  el.innerHTML = room.messages.map(m => {
+    if (m.system) return `<div class="sys-msg">${esc(m.text)}</div>`;
+    const [fg, bg] = col(m.user);
+    return `<div class="msg ${m.own?'own':''}">
+      <div class="msg-av" style="background:${bg};color:${fg}">${m.user[0].toUpperCase()}</div>
+      <div class="msg-body">
+        <div class="msg-head"><span class="msg-user" style="color:${fg}">${esc(m.user)}</span><span class="msg-time">${m.time}</span></div>
+        <div class="msg-text">${esc(m.text)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function renderMembers(room) {
+  document.getElementById('members-row').innerHTML = room.members.slice(0,3).map(m => {
+    const [fg, bg] = col(m);
+    return `<div class="member-chip">${esc(m)}</div>`;
+  }).join('') + (room.members.length > 3 ? `<span>+${room.members.length-3}</span>` : '');
+}
+
+function sendMsg() {
+  const inp = document.getElementById('chat-input');
+  const txt = inp.value.trim();
+  if (!txt || !socket || socket.readyState !== 1) return;
+  socket.send(JSON.stringify({ type: 'message', body: txt }));
+  inp.value = ''; inp.style.height = 'auto';
+}
+
+function exitRoom() {
+  intentionalLeave = true;
+  if (socket) socket.close();
+  currentRoom = null;
+  document.getElementById('typing-bar').innerHTML = '';
+  mobileView = 'rooms';
+  syncLayout();
+  renderRooms();
+}
+
+// ── UI HELPERS ──
+function updateProfileUI() {
+  if (!me) return;
+  const [fg, bg] = col(me);
+  const hav = document.getElementById('hdr-av');
+  if (hav) {
+    hav.textContent = me[0].toUpperCase();
+    Object.assign(hav.style, { background: bg, color: fg, display: 'flex' });
+  }
+  document.getElementById('hdr-name').textContent = me;
+}
+
+function openModal(){ document.getElementById('modal').classList.add('open'); }
+function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+function handleOverlay(e){ if(e.target.id === 'modal') closeModal(); }
+function syncLayout() {
+  const sidebar = document.getElementById('sidebar');
+  const chatArea = document.getElementById('chat-area');
+  const activeChat = document.getElementById('active-chat');
+  const emptyState = document.getElementById('empty-state');
+  if (!sidebar || !chatArea || !activeChat || !emptyState) return;
+
+  if (isMobile()) {
+    if (mobileView === 'chat' && currentRoom) {
+      sidebar.classList.add('hidden');
+      chatArea.classList.remove('hidden');
+      activeChat.style.display = 'flex';
+      emptyState.style.display = 'none';
+    } else {
+      sidebar.classList.remove('hidden');
+      chatArea.classList.add('hidden');
+      activeChat.style.display = 'none';
+      emptyState.style.display = 'flex';
+    }
+  } else {
+    // Desktop: show both panels; use active/empty state based on room selection.
+    sidebar.classList.remove('hidden');
+    chatArea.classList.remove('hidden');
+    if (currentRoom) {
+      activeChat.style.display = 'flex';
+      emptyState.style.display = 'none';
+    } else {
+      activeChat.style.display = 'none';
+      emptyState.style.display = 'flex';
+    }
+  }
+}
+function mobileShowRooms(){ mobileView = 'rooms'; syncLayout(); }
+function mobileShowChat(){ if (currentRoom) { mobileView = 'chat'; syncLayout(); } }
+function goBack(){ if (isMobile()) mobileShowRooms(); }
+function handleKey(e){ if(e.key==='Enter'&&!e.shiftKey&&!isMobile()){ e.preventDefault(); sendMsg(); } }
+
+async function createRoom() {
+  const name = document.getElementById('room-name').value.trim();
+  const topic = document.getElementById('room-topic').value.trim();
+  if (!name) return;
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const { latitude, longitude } = pos.coords;
+    const res = await fetch(`${API_BASE_URL}/rooms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ name, topic, lat: latitude, lng: longitude })
+    });
+    const result = await res.json();
+    if (result.ok) {
+      closeModal();
+      refreshNearbyRooms();
+      setTimeout(() => openRoom(result.data.id), 500);
+    }
+  });
+}
+
+// Auto-login
+if (me && token) startApp();
+
+// UI refresh: keep countdown text updated and liveCount reasonably accurate.
+const NEARBY_RENDER_MS = 15000;
+const NEARBY_POLL_MS = 30000;
+setInterval(() => { if (rooms.length > 0) renderRooms(); }, NEARBY_RENDER_MS);
+setInterval(() => {
+  if (!token || !lastGeo || currentRoom == null && !rooms.length) return;
+  fetchNearbyRooms(lastGeo.lat, lastGeo.lng);
+}, NEARBY_POLL_MS);
+
+// Keep sidebar/chat-panel visibility consistent after resize/rotate.
+let layoutResizeTimer = null;
+window.addEventListener('resize', () => {
+  if (layoutResizeTimer) clearTimeout(layoutResizeTimer);
+  layoutResizeTimer = setTimeout(() => syncLayout(), 120);
+});
+</script>
+</body>
+</html>
