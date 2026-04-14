@@ -511,6 +511,23 @@ body::before {
 }
 .nav-fab:active { transform:scale(0.92); }
 
+.signout-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ff4d4d;
+    border: 1px solid #ff4d4d;
+    padding: 5px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.signout-btn:hover {
+    background: #ff4d4d;
+    color: white;
+}
+   
+
 /* ══════════════════════════════════
    ANIMATIONS
 ══════════════════════════════════ */
@@ -652,6 +669,16 @@ body::before {
     <div class="sidebar-section-label">
       <span>Nearby Rooms</span>
       <button class="btn-new" onclick="openModal()">+ New</button>
+
+<header class="app-header">
+    <div class="user-info">
+        <div id="hdr-av" class="avatar"></div>
+        <span id="hdr-name"></span>
+    </div>
+    
+    <button id="signout-btn" class="signout-btn">Sign Out</button>
+</header>
+       
     </div>
     <div class="rooms-list" id="rooms-list"></div>
     <div class="feature-strip">
@@ -1218,6 +1245,30 @@ let layoutResizeTimer = null;
 window.addEventListener('resize', () => {
   if (layoutResizeTimer) clearTimeout(layoutResizeTimer);
   layoutResizeTimer = setTimeout(() => syncLayout(), 120);
+});
+
+// REPLACE the very bottom of your script.js with this:
+document.addEventListener('DOMContentLoaded', () => {
+    const signOutBtn = document.getElementById('signout-btn');
+
+    if (signOutBtn) {
+        signOutBtn.addEventListener('click', () => {
+            // 1. Log that we are leaving
+            console.log("Rat is leaving the burrow...");
+
+            // 2. Clear the EXACT keys your app uses
+            localStorage.removeItem('chatrat_name');
+            localStorage.removeItem('chatrat_token');
+            localStorage.removeItem('chatrat_uid');
+
+            // 3. Clear any session variables 
+            // (This stops the 'me' and 'token' variables from working)
+            localStorage.clear(); 
+
+            // 4. Redirect to refresh the state completely
+            window.location.reload();
+        });
+    }
 });
 </script>
 </body>
