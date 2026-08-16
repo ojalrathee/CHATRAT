@@ -1,0 +1,26 @@
+name = "chatrat-backend"
+main = "src/index.ts"
+compatibility_date = "2026-03-30"
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[vars]
+# Set this in Cloudflare dashboard or via `wrangler secret put SESSION_SECRET`
+# SESSION_SECRET = "dev-only"
+TOKEN_TTL_SECONDS = "604800" # 7 days
+ROOM_TTL_SECONDS = "14400"   # 4 hours
+
+[[d1_databases]]
+binding = "CHATRAT_DB"
+database_name = "chatrat-db"
+database_id = "3b770733-8e0e-4f69-8416-673f6ccb87a2"
+
+[[durable_objects.bindings]]
+name = "ROOM_DO"
+class_name = "RoomDurableObject"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RoomDurableObject"]
+
