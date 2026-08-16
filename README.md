@@ -1,115 +1,224 @@
-# CHATRAT backend (free-first, realtime)
+# CHATRAT Backend
 
-This backend is built for your current frontend (`chatrat.html`) and provides:
-- Anonymous **handle-only** sessions (no login)
-- **Nearby rooms** (10km default), **4-hour expiry**
-- **Real-time** chat (WebSocket) with **join/leave**, **typing**, **messages**
+A high-performance, real-time, anonymous proximity chat backend designed to connect users in nearby geographic locations. This backend is built to power the CHATRAT frontend (e.g., `chatrat.html`) and is designed to run with zero-cost hosting on Cloudflare's serverless stack.
 
-## Stack (zero-cost friendly)
-- **Cloudflare Workers** (REST API)
-- **Durable Objects** (one WebSocket “room server” per room)
-- **D1 (SQLite)** (rooms + message history)
+## Features
+- **Anonymous Sessions:** Handle-only sessions without the friction of a formal login.
+- **Proximity-Based Chat Rooms:** Interactive chat rooms created around geographic coordinates (defaulting to a 10km radius) with a automatic 4-hour room expiry.
+- **Real-Time Communication:** Bi-directional real-time messaging, join/leave events, and live typing indicators powered by WebSockets.
+- **Zero-Cost Friendly Stack:** Built on top of Cloudflare Workers, Durable Objects, and Cloudflare D1 (SQLite).
 
-## Endpoints
-Base: `/v1`
+---
 
-- **POST** `/session`
-  - body: `{ "handle": "streetrat_99", "deviceId": "optional-stable-id" }`
-  - returns: `{ ok:true, data:{ token, tokenExpiresAt, userId, handle } }`
+## Tech Stack
+- **Cloudflare Workers:** Serverless compute platform hosting the REST API endpoints.
+- **Durable Objects:** State-maintaining serverless actors, maintaining one dedicated WebSocket "room server" per active chat room to coordinate real-time connections.
+- **Cloudflare D1 (SQLite):** Serverless SQL database managing room listings and historical message logs.
+- **TypeScript:** Fully typed codebase for server stability and clear data contract modeling.
 
-- **GET** `/rooms/nearby?lat=..&lng=..&radiusKm=10`
-  - returns rooms with `liveCount` (best-effort) + `distanceKm`
+---
 
-- **POST** `/rooms` (auth required)
-  - header: `Authorization: Bearer <token>`
-  - body: `{ "name":"Chai Gang ☕", "topic":"Morning vibes", "lat":29.15, "lng":75.72 }`
+## API Reference
 
-- **GET** `/rooms/:roomId/messages?limit=50&before=<ISO>`
-  - scrollback paging (older messages)
-
-- **GET** `/rooms/:roomId/messages?limit=50&after=<ISO>`
-  - **polling fallback** (new messages since cursor)
-
-## Realtime (WebSocket)
-- Connect:
-  - `wss://<your-domain>/v1/rooms/<roomId>/ws?token=<token>`
-- Client → Server events:
-  - `{ "type":"typing", "isTyping": true }`
-  - `{ "type":"message", "body":"hello" }`
-- Server → Client events:
-  - `room_state`, `member_joined`, `member_left`, `typing`, `message`, `system`, `error`
-  - Shapes are in `src/types.ts`.
-
-## Local development
-1. Install Node.js (LTS) and npm.
-2. In this folder:
-
-```bash
-npm install
+### Base URL
+```
+/v1
 ```
 
-3. Create a local dev secret file:
-   - copy `.dev.vars.example` → `.dev.vars`
-   - set `SESSION_SECRET` to any string
+### Endpoints
 
-4. Create a D1 database (Cloudflare prints a `database_id`):
+#### 1. Create/Resume Session
+Create or resume an anonymous, handle-only session.
+* **Path:** `POST /session`
+* **Request Body:**
+  ```json
+  {
+    "handle": "streetrat_99",
+    "deviceId": "optional-stable-id"
+  }
+  ```
+* **Response (Success):**
+  ```json
+  {
+    "ok": true,
+    "data": {
+      "token": "string",
+      "tokenExpiresAt": "string (ISO Timestamp)",
+      "userId": "string",
+      "handle": "streetrat_99"
+    }
+  }
+  ```
 
-```bash
-npx wrangler d1 create chatrat-db
-npm run db:migrate:local
+#### 2. Get Nearby Rooms
+Query chat rooms within a specific geographic range.
+* **Path:** `GET /rooms/nearby`
+* **Query Parameters:**
+  - `lat` (float, required) — Latitude of the user
+  - `lng` (float, required) — Longitude of the user
+  - `radiusKm` (integer, optional) — Search radius (default is `10` km)
+* **Response (Success):**
+  ```json
+  {
+    "ok": true,
+    "data": [
+      {
+        "id": "string",
+        "name": "Chai Gang ☕",
+        "topic": "Morning vibes",
+        "distanceKm": 1.2,
+        "liveCount": 5
+      }
+    ]
+  }
+  ```
+
+#### 3. Create a Chat Room
+Create a new localized chat room. **Authentication Required.**
+* **Path:** `POST /rooms`
+* **Headers:** `Authorization: Bearer <token>`
+* **Request Body:**
+  ```json
+  {
+    "name": "Chai Gang ☕",
+    "topic": "Morning vibes",
+    "lat": 29.15,
+    "lng": 75.72
+  }
+  ```
+
+#### 4. Fetch Message History (Scrollback Paging)
+Retrieve historical messages from a room before a specific timeline cursor.
+* **Path:** `GET /rooms/:roomId/messages`
+* **Query Parameters:**
+  - `limit` (integer, optional) — Number of messages to fetch (default/max: `50`)
+  - `before` (string, ISO Timestamp, required) — Cursor timestamp for fetching older messages
+
+#### 5. Fetch Message History (Polling Fallback)
+Retrieve new messages since a specific timeline cursor (used as a backup to WebSockets).
+* **Path:** `GET /rooms/:roomId/messages`
+* **Query Parameters:**
+  - `limit` (integer, optional) — Number of messages to fetch (default/max: `50`)
+  - `after` (string, ISO Timestamp, required) — Cursor timestamp for fetching newer messages
+
+---
+
+## Real-Time WebSocket Protocol
+
+### Connection Establishment
+To establish a live connection to a room, initiate a WebSocket connection to:
+```
+wss://<your-domain>/v1/rooms/<roomId>/ws?token=<token>
 ```
 
-5. Put the printed `database_id` into `wrangler.toml` under `[[d1_databases]]`.
+### Client-to-Server Events
+Clients can transmit JSON-formatted events over the WebSocket connection:
 
-6. Start dev server:
-
-```bash
-npm run dev
+#### Typing Indicator
+```json
+{
+  "type": "typing",
+  "isTyping": true
+}
 ```
 
-## Free deployment (Cloudflare)
-1. Create a free Cloudflare account.
-2. Install Wrangler and login:
-
-```bash
-npx wrangler login
+#### Send Message
+```json
+{
+  "type": "message",
+  "body": "hello"
+}
 ```
 
-3. Create a D1 database:
+### Server-to-Client Events
+The server pushes structured real-time events to connected clients. Detailed interfaces can be verified in `src/types.ts`.
+- `room_state` — Sent immediately upon connection to sync current room details
+- `member_joined` — Broadcasted when a new user joins the room
+- `member_left` — Broadcasted when a user disconnects or leaves the room
+- `typing` — Informs clients of user typing status changes
+- `message` — Relays a newly posted chat message
+- `system` — System-generated notifications
+- `error` — Informational or connection errors
 
-```bash
-npx wrangler d1 create chatrat-db
-```
+---
 
-4. Put the returned `database_id` into `wrangler.toml` (`[[d1_databases]]`).
-5. Apply schema:
+## Local Development Setup
 
-```bash
-npm run db:migrate:remote
-```
+### Prerequisites
+- Node.js (LTS version recommended)
+- npm package manager
 
-6. Set secret:
+### Steps
+1. **Clone and Install Dependencies:**
+   ```bash
+   npm install
+   ```
 
-```bash
-npx wrangler secret put SESSION_SECRET
-```
+2. **Configure Environment Variables:**
+   Copy the example environment file:
+   ```bash
+   cp .dev.vars.example .dev.vars
+   ```
+   Open `.dev.vars` and set the `SESSION_SECRET` variable to any secure string of your choice.
 
-7. Deploy:
+3. **Database Initialization:**
+   Initialize your local Cloudflare D1 SQLite database instance:
+   ```bash
+   npx wrangler d1 create chatrat-db
+   ```
+   Run the local database migrations to set up the database schema:
+   ```bash
+   npm run db:migrate:local
+   ```
+   Copy the printed `database_id` from the output and update your `wrangler.toml` configuration file under the `[[d1_databases]]` section.
 
-```bash
-npm run deploy
-```
+4. **Start the Development Server:**
+   Launch the local wrangler server:
+   ```bash
+   npm run dev
+   ```
 
-## Basic safety / anti-spam (MVP)
-- REST: per-IP rate limits for `/session` and `/rooms`
-- WS: per-IP join limit + per-user message rate limit + message max length
+---
 
-If you want stronger bot protection later, add Cloudflare **Turnstile** to `POST /rooms` and/or WS `message`.
+## Production Deployment (Cloudflare)
 
-## Optional: Turnstile (bot protection)
-If spam becomes a problem, the usual pattern is:
-1) Frontend renders a Turnstile widget and gets a `turnstileToken`.
-2) Send `turnstileToken` to `POST /v1/rooms` (and/or include it in WS `message`).
-3) Backend verifies it with Cloudflare before accepting the action.
+To deploy the backend to Cloudflare's serverless infrastructure:
 
+1. **Sign Up/In:** Ensure you have a free [Cloudflare](https://dash.cloudflare.com) account.
+2. **Authenticate Wrangler:** Login using the CLI tool:
+   ```bash
+   npx wrangler login
+   ```
+3. **Provision Production D1 Database:**
+   ```bash
+   npx wrangler d1 create chatrat-db
+   ```
+4. **Configure Database ID:** Update your production `wrangler.toml` file under the `[[d1_databases]]` section with the printed `database_id`.
+5. **Apply Remote Migrations:** Build and migrate the production SQLite tables:
+   ```bash
+   npm run db:migrate:remote
+   ```
+6. **Set Production Secrets:** Securely inject the `SESSION_SECRET` token:
+   ```bash
+   npx wrangler secret put SESSION_SECRET
+   ```
+7. **Deploy:** Compile and publish your serverless worker live to Cloudflare:
+   ```bash
+   npm run deploy
+   ```
 
+---
+
+## Anti-Spam & Security (MVP)
+The backend enforces basic defensive safety boundaries at the edge:
+- **REST Endpoints:** Geographic IP-based rate limiting on `/session` and `/rooms` creation.
+- **WebSocket Gateway:** Connection limits per-IP, message frequency rate limits per-user, and enforced maximum message lengths.
+
+### Optional Bot Protection (Cloudflare Turnstile)
+If automated spam becomes a threat:
+1. Integrate a Turnstile widget onto your frontend to obtain a `turnstileToken`.
+2. Send the token inside the payload of your `POST /v1/rooms` requests and/or verify it during the WebSocket messaging handshakes.
+3. The backend validates the integrity of the token against Cloudflare's verification API before allowing writes.
+
+---
+*Created by [ojalrathee](https://github.com/ojalrathee).*
